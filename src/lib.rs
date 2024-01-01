@@ -1,51 +1,83 @@
+use std::fmt::Display;
+
 pub enum Term {
     Variable(Variable),
     Abstraction(Abstraction),
     Application(Application),
 }
 
+impl Display for Term {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Term::Variable(variable) => variable.fmt(f),
+            Term::Abstraction(abstraction) => abstraction.fmt(f),
+            Term::Application(application) => application.fmt(f),
+        }
+    }
+}
+
 pub struct Variable(char);
 
+impl Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 pub struct Abstraction {
-    #[allow(dead_code)]
     arg: Variable,
-    #[allow(dead_code)]
     body: Box<Term>,
+}
+
+impl Display for Abstraction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "λ{}.{}", self.arg, self.body)
+    }
 }
 
 pub struct Application(Box<Term>, Box<Term>);
 
+impl Display for Application {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.0, self.1)
+    }
+}
+
 #[cfg(test)]
 mod test {
+
     use super::*;
 
     #[test]
     fn identity() {
-        let _identity = Term::Abstraction(Abstraction {
+        let identity = Term::Abstraction(Abstraction {
             arg: Variable('x'),
             body: Box::new(Term::Variable(Variable('x'))),
         });
+        assert_eq!("λx.x", format!("{identity}"))
     }
 
     #[test]
     fn test_true() {
-        let _lambda_true = Term::Abstraction(Abstraction {
+        let lambda_true = Term::Abstraction(Abstraction {
             arg: Variable('x'),
             body: Box::new(Term::Abstraction(Abstraction {
                 arg: Variable('y'),
                 body: Box::new(Term::Variable(Variable('x'))),
             })),
         });
+        assert_eq!("λx.λy.x", format!("{lambda_true}"))
     }
 
     #[test]
     fn test_false() {
-        let _lambda_false = Term::Abstraction(Abstraction {
+        let lambda_false = Term::Abstraction(Abstraction {
             arg: Variable('x'),
             body: Box::new(Term::Abstraction(Abstraction {
                 arg: Variable('y'),
                 body: Box::new(Term::Variable(Variable('y'))),
             })),
         });
+        assert_eq!("λx.λy.y", format!("{lambda_false}"))
     }
 }
