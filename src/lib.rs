@@ -80,4 +80,26 @@ mod test {
         });
         assert_eq!("λx.λy.y", format!("{lambda_false}"))
     }
+
+    #[test]
+    fn ambiguous_association() {
+        let left_associative = Term::Application(Application(
+            Box::new(Term::Application(Application(
+                Box::new(Term::Variable(Variable('x'))),
+                Box::new(Term::Variable(Variable('y'))),
+            ))),
+            Box::new(Term::Variable(Variable('z'))),
+        ));
+        let right_associative = Term::Application(Application(
+            Box::new(Term::Variable(Variable('x'))),
+            Box::new(Term::Application(Application(
+                Box::new(Term::Variable(Variable('y'))),
+                Box::new(Term::Variable(Variable('z'))),
+            ))),
+        ));
+        assert_eq!(
+            format!("{left_associative}"),
+            format!("{right_associative}")
+        )
+    }
 }
