@@ -39,7 +39,11 @@ pub struct Application(Box<Term>, Box<Term>);
 
 impl Display for Application {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.0, self.1)
+        // check if the second arg is also an application
+        match self.1.as_ref() {
+            Term::Application(_) => write!(f, "{} ({})", self.0, self.1),
+            _ => write!(f, "{} {}", self.0, self.1),
+        }
     }
 }
 
@@ -83,6 +87,7 @@ mod test {
 
     #[test]
     fn ambiguous_association() {
+        // Application is left associative per default
         let left_associative = Term::Application(Application(
             Box::new(Term::Application(Application(
                 Box::new(Term::Variable(Variable('x'))),
@@ -90,6 +95,8 @@ mod test {
             ))),
             Box::new(Term::Variable(Variable('z'))),
         ));
+
+        // This one needs parenthesis to disambiguate
         let right_associative = Term::Application(Application(
             Box::new(Term::Variable(Variable('x'))),
             Box::new(Term::Application(Application(
@@ -97,7 +104,7 @@ mod test {
                 Box::new(Term::Variable(Variable('z'))),
             ))),
         ));
-        assert_eq!(
+        assert_ne!(
             format!("{left_associative}"),
             format!("{right_associative}")
         )
