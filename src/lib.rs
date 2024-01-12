@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Debug, PartialEq)]
 pub enum Term {
     Variable(Variable),
     Abstraction(Abstraction),
@@ -16,6 +17,7 @@ impl Display for Term {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Variable(char);
 
 impl Display for Variable {
@@ -24,6 +26,7 @@ impl Display for Variable {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Abstraction {
     arg: Variable,
     body: Box<Term>,
@@ -35,6 +38,7 @@ impl Display for Abstraction {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Application(Box<Term>, Box<Term>);
 
 impl Display for Application {
