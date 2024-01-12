@@ -1,3 +1,12 @@
+use nom::branch::alt;
+use nom::character::complete::anychar;
+use nom::character::complete::char;
+use nom::combinator::all_consuming;
+use nom::combinator::map;
+use nom::sequence::preceded;
+use nom::sequence::separated_pair;
+use nom::sequence::tuple;
+use nom::IResult;
 use std::fmt::Display;
 
 #[derive(Debug, PartialEq)]
@@ -19,6 +28,56 @@ impl Display for Term {
 
 #[derive(Debug, PartialEq)]
 pub struct Variable(char);
+
+fn parse_variable(input: &str) -> IResult<&str, Variable> {
+    let (remaining_input, parsed_char) = anychar(input)?;
+    let variable = Variable(parsed_char);
+
+    Ok((remaining_input, variable))
+}
+
+fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
+    preceded(
+        char('λ'),
+        map(
+            tuple((
+                parse_variable,
+                preceded(char('.'), parse_term_non_consuming),
+            )),
+            |(arg, body)| Abstraction {
+                arg,
+                body: Box::new(body),
+            },
+        ),
+    )(input)
+}
+
+fn parse_application(input: &str) -> IResult<&str, Application> {
+    map(
+        separated_pair(
+            parse_term_non_consuming,
+            char(' '),
+            parse_term_non_consuming,
+        ),
+        |(term1, term2)| -> Application { Application(Box::new(term1), Box::new(term2)) },
+    )(input)
+}
+
+fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
+    alt((
+        map(parse_variable, Term::Variable),
+        map(parse_application, Term::Application),
+        map(parse_abstraction, Term::Abstraction),
+    ))(input)
+}
+
+pub fn parse_term(input: &str) -> IResult<&str, Term> {
+    alt((
+        map(all_consuming(parse_variable), Term::Variable),
+        map(all_consuming(parse_application), Term::Application),
+        map(all_consuming(parse_abstraction), Term::Abstraction),
+    ))(input)
+}
 
 impl Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -112,5 +171,35 @@ mod test {
             format!("{left_associative}"),
             format!("{right_associative}")
         )
+    }
+
+    #[test]
+    fn test_parse_variable() {
+        let (_, x) = parse_term("x").unwrap();
+        assert_eq!(x, Term::Variable(Variable('x')));
+    }
+
+    #[test]
+    fn test_parse_abstraction() {
+        let (_, term) = parse_term("λx.x").unwrap();
+        assert_eq!(
+            term,
+            Term::Abstraction(Abstraction {
+                arg: Variable('x'),
+                body: Box::new(Term::Variable(Variable('x'))),
+            })
+        );
+    }
+
+    #[test]
+    fn test_parse_application() {
+        let (_, term) = parse_term("x y").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Variable(Variable('x'))),
+                Box::new(Term::Variable(Variable('y'))),
+            ))
+        );
     }
 }
