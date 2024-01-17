@@ -40,7 +40,7 @@ fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
     preceded(
         char('λ'),
         map(
-            tuple((parse_variable, preceded(char('.'), parse_one_term))),
+            tuple((parse_variable, preceded(char('.'), parse_maximal_terms))),
             |(arg, body)| Abstraction {
                 arg,
                 body: Box::new(body),
@@ -56,15 +56,19 @@ fn parse_one_term(input: &str) -> IResult<&str, Term> {
     ))(input)
 }
 
-pub fn parse_term(input: &str) -> IResult<&str, Term> {
+fn parse_maximal_terms(input: &str) -> IResult<&str, Term> {
     let (rest, term) = parse_one_term(input)?;
-    all_consuming(fold_many0(
+    fold_many0(
         preceded(char(' '), parse_one_term),
         move || term.clone(),
         |left_term, right_term| {
             Term::Application(Application(Box::new(left_term), Box::new(right_term)))
         },
-    ))(rest)
+    )(rest)
+}
+
+pub fn parse_term(input: &str) -> IResult<&str, Term> {
+    all_consuming(parse_maximal_terms)(input)
 }
 
 impl Display for Variable {
@@ -207,9 +211,9 @@ mod test {
     }
 
     #[test]
-    fn parse_complex_term_fail() {
+    fn parse_complex_term() {
         let (_, term) = parse_term("λx.λy.λz.a b c").unwrap();
-        assert_ne!(
+        assert_eq!(
             term,
             Term::Abstraction(Abstraction {
                 arg: Variable('x'),
