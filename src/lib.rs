@@ -3,8 +3,8 @@ use nom::character::complete::anychar;
 use nom::character::complete::char;
 use nom::combinator::all_consuming;
 use nom::combinator::map;
+use nom::multi::fold_many0;
 use nom::sequence::preceded;
-use nom::sequence::separated_pair;
 use nom::sequence::tuple;
 use nom::IResult;
 use std::fmt::Display;
@@ -40,10 +40,7 @@ fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
     preceded(
         char('λ'),
         map(
-            tuple((
-                parse_variable,
-                preceded(char('.'), parse_term_non_consuming),
-            )),
+            tuple((parse_variable, preceded(char('.'), parse_one_term))),
             |(arg, body)| Abstraction {
                 arg,
                 body: Box::new(body),
@@ -52,31 +49,22 @@ fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
     )(input)
 }
 
-fn parse_application(input: &str) -> IResult<&str, Application> {
-    map(
-        separated_pair(
-            parse_term_non_consuming,
-            char(' '),
-            parse_term_non_consuming,
-        ),
-        |(term1, term2)| -> Application { Application(Box::new(term1), Box::new(term2)) },
-    )(input)
-}
-
-fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
+fn parse_one_term(input: &str) -> IResult<&str, Term> {
     alt((
-        map(parse_variable, Term::Variable),
-        map(parse_application, Term::Application),
         map(parse_abstraction, Term::Abstraction),
+        map(parse_variable, Term::Variable),
     ))(input)
 }
 
 pub fn parse_term(input: &str) -> IResult<&str, Term> {
-    alt((
-        map(all_consuming(parse_variable), Term::Variable),
-        map(all_consuming(parse_application), Term::Application),
-        map(all_consuming(parse_abstraction), Term::Abstraction),
-    ))(input)
+    let (rest, term) = parse_one_term(input)?;
+    all_consuming(fold_many0(
+        preceded(char(' '), parse_one_term),
+        move || term.clone(),
+        |left_term, right_term| {
+            Term::Application(Application(Box::new(left_term), Box::new(right_term)))
+        },
+    ))(rest)
 }
 
 impl Display for Variable {
