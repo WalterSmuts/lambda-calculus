@@ -9,7 +9,7 @@ use nom::sequence::tuple;
 use nom::IResult;
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Term {
     Variable(Variable),
     Abstraction(Abstraction),
@@ -26,7 +26,7 @@ impl Display for Term {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Variable(char);
 
 fn parse_variable(input: &str) -> IResult<&str, Variable> {
@@ -85,7 +85,7 @@ impl Display for Variable {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Abstraction {
     arg: Variable,
     body: Box<Term>,
@@ -97,7 +97,7 @@ impl Display for Abstraction {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Application(Box<Term>, Box<Term>);
 
 impl Display for Application {
