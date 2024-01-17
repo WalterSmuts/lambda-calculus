@@ -202,4 +202,19 @@ mod test {
             ))
         );
     }
+
+    #[test]
+    fn parsing_preserves_application_left_associativity() {
+        let (_, term) = parse_term("a b c").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Application(Application(
+                    Box::new(Term::Variable(Variable('a'))),
+                    Box::new(Term::Variable(Variable('b'))),
+                ))),
+                Box::new(Term::Variable(Variable('c'))),
+            ))
+        );
+    }
 }
