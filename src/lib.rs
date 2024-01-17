@@ -205,4 +205,28 @@ mod test {
             ))
         );
     }
+
+    #[test]
+    fn parse_complex_term_fail() {
+        let (_, term) = parse_term("λx.λy.λz.a b c").unwrap();
+        assert_ne!(
+            term,
+            Term::Abstraction(Abstraction {
+                arg: Variable('x'),
+                body: Box::new(Term::Abstraction(Abstraction {
+                    arg: Variable('y'),
+                    body: Box::new(Term::Abstraction(Abstraction {
+                        arg: Variable('z'),
+                        body: Box::new(Term::Application(Application(
+                            Box::new(Term::Application(Application(
+                                Box::new(Term::Variable(Variable('a'))),
+                                Box::new(Term::Variable(Variable('b'))),
+                            ))),
+                            Box::new(Term::Variable(Variable('c'))),
+                        ))),
+                    })),
+                })),
+            })
+        );
+    }
 }
