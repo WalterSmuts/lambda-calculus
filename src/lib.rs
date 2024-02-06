@@ -93,8 +93,8 @@ fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
 
 pub fn parse_term(input: &str) -> IResult<&str, Term> {
     alt((
-        map(all_consuming(parse_variable), Term::Variable),
         map(all_consuming(parse_application), Term::Application),
+        map(all_consuming(parse_variable), Term::Variable),
         map(all_consuming(parse_abstraction), Term::Abstraction),
     ))(input)
 }
@@ -239,9 +239,9 @@ mod test {
     }
 
     #[test]
-    fn parse_complex_term_fail() {
+    fn parse_complex_term() {
         let (_, term) = parse_term("λx.λy.λz.a b c").unwrap();
-        assert_ne!(
+        assert_eq!(
             term,
             Term::Abstraction(Abstraction {
                 arg: Variable('x'),
