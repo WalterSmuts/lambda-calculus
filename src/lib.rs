@@ -6,6 +6,7 @@ use nom::combinator::map;
 use nom::error::Error;
 use nom::multi::fold_many1;
 use nom::sequence::preceded;
+use nom::sequence::terminated;
 use nom::sequence::tuple;
 use nom::IResult;
 use std::fmt::Display;
@@ -79,6 +80,7 @@ fn parse_application(input: &str) -> IResult<&str, Application> {
 
 fn parse_term_non_consuming_non_application(input: &str) -> IResult<&str, Term> {
     alt((
+        terminated(preceded(char('('), parse_term_non_consuming), char(')')),
         map(parse_variable, Term::Variable),
         map(parse_abstraction, Term::Abstraction),
     ))(input)
@@ -257,6 +259,132 @@ mod test {
                             Box::new(Term::Variable(Variable('c'))),
                         ))),
                     })),
+                })),
+            })
+        );
+    }
+
+    #[test]
+    fn parenthesis_around_application_left_associative() {
+        let (_, term) = parse_term("(a b) c").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Application(Application(
+                    Box::new(Term::Variable(Variable('a'))),
+                    Box::new(Term::Variable(Variable('b'))),
+                ))),
+                Box::new(Term::Variable(Variable('c'))),
+            ))
+        );
+    }
+
+    #[test]
+    fn parenthesis_around_application_right_associative() {
+        let (_, term) = parse_term("a (b c)").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Variable(Variable('a'))),
+                Box::new(Term::Application(Application(
+                    Box::new(Term::Variable(Variable('b'))),
+                    Box::new(Term::Variable(Variable('c'))),
+                ))),
+            ))
+        );
+    }
+
+    #[test]
+    fn brackets_around_variable() {
+        let (_, term) = parse_term("(a) b").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Variable(Variable('a'))),
+                Box::new(Term::Variable(Variable('b'))),
+            ))
+        );
+    }
+
+    #[test]
+    fn brackets_around_abstraction() {
+        let (_, term) = parse_term("λx.(λy.x)").unwrap();
+        assert_eq!(
+            term,
+            Term::Abstraction(Abstraction {
+                arg: Variable('x'),
+                body: Box::new(Term::Abstraction(Abstraction {
+                    arg: Variable('y'),
+                    body: Box::new(Term::Variable(Variable('x'))),
+                })),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_abstraction_before_application() {
+        let (_, term) = parse_term("λy.(a b) c").unwrap();
+        assert_eq!(
+            term,
+            Term::Abstraction(Abstraction {
+                arg: Variable('y'),
+                body: Box::new(Term::Application(Application(
+                    Box::new(Term::Application(Application(
+                        Box::new(Term::Variable(Variable('a'))),
+                        Box::new(Term::Variable(Variable('b'))),
+                    ))),
+                    Box::new(Term::Variable(Variable('c'))),
+                ))),
+            })
+        );
+    }
+
+    #[test]
+    fn test_parse_term_non_consuming() {
+        let (_, term) = parse_term_non_consuming("(a b) c").unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Application(Application(
+                    Box::new(Term::Variable(Variable('a'))),
+                    Box::new(Term::Variable(Variable('b'))),
+                ))),
+                Box::new(Term::Variable(Variable('c'))),
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_more_complex_term() {
+        let (_, term) = parse_term("λx.λy.(a b) (λz.λw.(c d e) f)").unwrap();
+        assert_eq!(
+            term,
+            Term::Abstraction(Abstraction {
+                arg: Variable('x'),
+                body: Box::new(Term::Abstraction(Abstraction {
+                    arg: Variable('y'),
+                    body: Box::new(Term::Application(Application(
+                        Box::new(Term::Application(Application(
+                            Box::new(Term::Variable(Variable('a'))),
+                            Box::new(Term::Variable(Variable('b'))),
+                        ))),
+                        Box::new(Term::Abstraction(Abstraction {
+                            arg: Variable('z'),
+                            body: Box::new(Term::Abstraction(Abstraction {
+                                arg: Variable('w'),
+                                body: Box::new(Term::Application(Application(
+                                    Box::new(Term::Application(Application(
+                                        Box::new(Term::Application(Application(
+                                            Box::new(Term::Variable(Variable('c'))),
+                                            Box::new(Term::Variable(Variable('d'))),
+                                        ))),
+                                        Box::new(Term::Variable(Variable('e'))),
+                                    ))),
+                                    Box::new(Term::Variable(Variable('f'))),
+                                ))),
+                            })),
+                        })),
+                    ))),
                 })),
             })
         );
