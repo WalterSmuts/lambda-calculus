@@ -389,4 +389,39 @@ mod test {
             })
         );
     }
+
+    #[test]
+    fn test_round_trip() {
+        let term = Term::Abstraction(Abstraction {
+            arg: Variable('x'),
+            body: Box::new(Term::Abstraction(Abstraction {
+                arg: Variable('y'),
+                body: Box::new(Term::Application(Application(
+                    Box::new(Term::Application(Application(
+                        Box::new(Term::Variable(Variable('a'))),
+                        Box::new(Term::Variable(Variable('b'))),
+                    ))),
+                    Box::new(Term::Abstraction(Abstraction {
+                        arg: Variable('z'),
+                        body: Box::new(Term::Abstraction(Abstraction {
+                            arg: Variable('w'),
+                            body: Box::new(Term::Application(Application(
+                                Box::new(Term::Application(Application(
+                                    Box::new(Term::Application(Application(
+                                        Box::new(Term::Variable(Variable('c'))),
+                                        Box::new(Term::Variable(Variable('d'))),
+                                    ))),
+                                    Box::new(Term::Variable(Variable('e'))),
+                                ))),
+                                Box::new(Term::Variable(Variable('f'))),
+                            ))),
+                        })),
+                    })),
+                ))),
+            })),
+        });
+        let serialised_term = format!("{term}");
+        let (_, parsed_term) = parse_term(&serialised_term).unwrap();
+        assert_eq!(term, parsed_term);
+    }
 }
