@@ -3,6 +3,7 @@ use nom::character::complete::anychar;
 use nom::character::complete::char;
 use nom::combinator::all_consuming;
 use nom::combinator::map;
+use nom::error::Error;
 use nom::sequence::preceded;
 use nom::sequence::separated_pair;
 use nom::sequence::tuple;
@@ -31,6 +32,15 @@ pub struct Variable(char);
 
 fn parse_variable(input: &str) -> IResult<&str, Variable> {
     let (remaining_input, parsed_char) = anychar(input)?;
+    match parsed_char {
+        '(' | ')' | 'λ' | '.' => {
+            return Err(nom::Err::Error(Error::new(
+                "{parsed_char} can't be a variable name.",
+                nom::error::ErrorKind::Tag,
+            )));
+        }
+        _ => (),
+    };
     let variable = Variable(parsed_char);
 
     Ok((remaining_input, variable))
