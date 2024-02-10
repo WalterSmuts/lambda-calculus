@@ -4,8 +4,8 @@ use nom::character::complete::char;
 use nom::combinator::all_consuming;
 use nom::combinator::map;
 use nom::error::Error;
+use nom::multi::fold_many1;
 use nom::sequence::preceded;
-use nom::sequence::separated_pair;
 use nom::sequence::tuple;
 use nom::IResult;
 use std::fmt::Display;
@@ -63,21 +63,31 @@ fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
 }
 
 fn parse_application(input: &str) -> IResult<&str, Application> {
-    map(
-        separated_pair(
-            parse_term_non_consuming,
-            char(' '),
-            parse_term_non_consuming,
-        ),
-        |(term1, term2)| -> Application { Application(Box::new(term1), Box::new(term2)) },
-    )(input)
+    let (rest, term) = parse_term_non_consuming_non_application(input)?;
+    let (rest, term) = fold_many1(
+        preceded(char(' '), parse_term_non_consuming_non_application),
+        move || term.clone(),
+        |left_term, right_term| {
+            Term::Application(Application(Box::new(left_term), Box::new(right_term)))
+        },
+    )(rest)?;
+    match term {
+        Term::Application(term) => Ok((rest, term)),
+        _ => unreachable!("{term}"),
+    }
+}
+
+fn parse_term_non_consuming_non_application(input: &str) -> IResult<&str, Term> {
+    alt((
+        map(parse_variable, Term::Variable),
+        map(parse_abstraction, Term::Abstraction),
+    ))(input)
 }
 
 fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
     alt((
-        map(parse_variable, Term::Variable),
         map(parse_application, Term::Application),
-        map(parse_abstraction, Term::Abstraction),
+        parse_term_non_consuming_non_application,
     ))(input)
 }
 
