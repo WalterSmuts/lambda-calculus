@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use anyhow::{anyhow, Result};
+
 pub mod parsing;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -19,6 +21,58 @@ impl Display for Term {
     }
 }
 
+impl Term {
+    pub fn reduce(&mut self) {
+        while let Ok(()) = self.reduce_one_step() {}
+    }
+
+    fn reduce_one_step(&mut self) -> Result<()> {
+        match self {
+            Term::Variable(x) => Err(anyhow!("Cannot reduce a variable {x}")),
+            Term::Abstraction(abstraction) => abstraction.body.reduce_one_step(),
+            Term::Application(application) => {
+                let t1 = &mut application.0;
+                let t2 = &application.1;
+
+                let x = match &**t1 {
+                    Term::Abstraction(abstraction) => abstraction.substitute(t2),
+                    _ => return t1.reduce_one_step(),
+                };
+                *self = x;
+                Ok(())
+            }
+        }
+    }
+
+    // TODO: Remove clones...
+    fn substitute_variables_with_arg(&mut self, variable: &Variable, arg: &Term) {
+        match self {
+            Term::Variable(x) => {
+                if *x == *variable {
+                    *self = arg.clone();
+                }
+            }
+            Term::Abstraction(abstraction) => {
+                let mut abstraction_clone = abstraction.clone();
+                abstraction_clone
+                    .body
+                    .substitute_variables_with_arg(variable, arg);
+                *self = Term::Abstraction(abstraction_clone);
+            }
+            Term::Application(application) => {
+                let mut application_clone = application.clone();
+                application_clone
+                    .0
+                    .substitute_variables_with_arg(variable, arg);
+                application_clone
+                    .1
+                    .substitute_variables_with_arg(variable, arg);
+                *self = Term::Application(application_clone);
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variable(char);
 
@@ -32,6 +86,13 @@ impl Display for Variable {
 pub struct Abstraction {
     arg: Variable,
     body: Box<Term>,
+}
+impl Abstraction {
+    fn substitute(&self, second_term: &Term) -> Term {
+        let mut new_body = self.body.clone();
+        new_body.substitute_variables_with_arg(&self.arg, second_term);
+        *new_body
+    }
 }
 
 impl Display for Abstraction {
@@ -114,5 +175,21 @@ mod test {
             format!("{left_associative}"),
             format!("{right_associative}")
         )
+    }
+
+    #[test]
+    fn test_reduction_of_true() {
+        use parsing::parse_term;
+        let mut term = parse_term("(λx.λy.x) a b").unwrap();
+        term.reduce();
+        assert_eq!(term, parse_term("a").unwrap());
+    }
+
+    #[test]
+    fn test_reduction_of_false() {
+        use parsing::parse_term;
+        let mut term = parse_term("(λx.λy.y) a b").unwrap();
+        term.reduce();
+        assert_eq!(term, parse_term("b").unwrap());
     }
 }
