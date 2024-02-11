@@ -1,4 +1,5 @@
 use super::*;
+use anyhow::Result;
 use nom::branch::alt;
 use nom::character::complete::anychar;
 use nom::character::complete::char;
@@ -73,12 +74,14 @@ fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
     ))(input)
 }
 
-pub fn parse_term(input: &str) -> IResult<&str, Term> {
+pub fn parse_term(input: &str) -> Result<Term> {
     alt((
         map(all_consuming(parse_application), Term::Application),
         map(all_consuming(parse_variable), Term::Variable),
         map(all_consuming(parse_abstraction), Term::Abstraction),
     ))(input)
+    .map(|(_rest, result)| result)
+    .map_err(|err| anyhow::anyhow!("{err}"))
 }
 
 #[cfg(test)]
@@ -87,13 +90,13 @@ mod test {
 
     #[test]
     fn test_parse_variable() {
-        let (_, x) = parse_term("x").unwrap();
+        let x = parse_term("x").unwrap();
         assert_eq!(x, Term::Variable(Variable('x')));
     }
 
     #[test]
     fn test_parse_abstraction() {
-        let (_, term) = parse_term("λx.x").unwrap();
+        let term = parse_term("λx.x").unwrap();
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
@@ -105,7 +108,7 @@ mod test {
 
     #[test]
     fn test_parse_application() {
-        let (_, term) = parse_term("x y").unwrap();
+        let term = parse_term("x y").unwrap();
         assert_eq!(
             term,
             Term::Application(Application(
@@ -117,7 +120,7 @@ mod test {
 
     #[test]
     fn parsing_preserves_application_left_associativity() {
-        let (_, term) = parse_term("a b c").unwrap();
+        let term = parse_term("a b c").unwrap();
         assert_eq!(
             term,
             Term::Application(Application(
@@ -132,7 +135,7 @@ mod test {
 
     #[test]
     fn parse_complex_term() {
-        let (_, term) = parse_term("λx.λy.λz.a b c").unwrap();
+        let term = parse_term("λx.λy.λz.a b c").unwrap();
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
@@ -156,7 +159,7 @@ mod test {
 
     #[test]
     fn parenthesis_around_application_left_associative() {
-        let (_, term) = parse_term("(a b) c").unwrap();
+        let term = parse_term("(a b) c").unwrap();
         assert_eq!(
             term,
             Term::Application(Application(
@@ -171,7 +174,7 @@ mod test {
 
     #[test]
     fn parenthesis_around_application_right_associative() {
-        let (_, term) = parse_term("a (b c)").unwrap();
+        let term = parse_term("a (b c)").unwrap();
         assert_eq!(
             term,
             Term::Application(Application(
@@ -186,7 +189,7 @@ mod test {
 
     #[test]
     fn brackets_around_variable() {
-        let (_, term) = parse_term("(a) b").unwrap();
+        let term = parse_term("(a) b").unwrap();
         assert_eq!(
             term,
             Term::Application(Application(
@@ -198,7 +201,7 @@ mod test {
 
     #[test]
     fn brackets_around_abstraction() {
-        let (_, term) = parse_term("λx.(λy.x)").unwrap();
+        let term = parse_term("λx.(λy.x)").unwrap();
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
@@ -213,7 +216,7 @@ mod test {
 
     #[test]
     fn parse_abstraction_before_application() {
-        let (_, term) = parse_term("λy.(a b) c").unwrap();
+        let term = parse_term("λy.(a b) c").unwrap();
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
@@ -246,7 +249,7 @@ mod test {
 
     #[test]
     fn parse_more_complex_term() {
-        let (_, term) = parse_term("λx.λy.(a b) (λz.λw.(c d e) f)").unwrap();
+        let term = parse_term("λx.λy.(a b) (λz.λw.(c d e) f)").unwrap();
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
@@ -311,7 +314,7 @@ mod test {
             })),
         });
         let serialised_term = format!("{term}");
-        let (_, parsed_term) = parse_term(&serialised_term).unwrap();
+        let parsed_term = parse_term(&serialised_term).unwrap();
         assert_eq!(term, parsed_term);
     }
 }
