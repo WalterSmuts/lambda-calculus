@@ -114,6 +114,25 @@ impl Display for Application {
     }
 }
 
+impl From<u32> for Term {
+    fn from(value: u32) -> Self {
+        let mut body: Box<Term> = Box::new(Term::Variable(Variable('z')));
+        for _ in 0..value {
+            body = Box::new(Term::Application(Application(
+                Box::new(Term::Variable(Variable('s'))),
+                body,
+            )))
+        }
+        Term::Abstraction(Abstraction {
+            arg: Variable('s'),
+            body: Box::new(Term::Abstraction(Abstraction {
+                arg: Variable('z'),
+                body,
+            })),
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
 

@@ -3,6 +3,7 @@ use anyhow::Result;
 use nom::branch::alt;
 use nom::character::complete::anychar;
 use nom::character::complete::char;
+use nom::character::complete::digit1;
 use nom::combinator::all_consuming;
 use nom::combinator::map;
 use nom::error::Error;
@@ -59,9 +60,14 @@ fn parse_application(input: &str) -> IResult<&str, Application> {
     }
 }
 
+fn parse_nat(input: &str) -> IResult<&str, Term> {
+    map(digit1, |nat: &str| nat.parse::<u32>().unwrap().into())(input)
+}
+
 fn parse_term_non_consuming_non_application(input: &str) -> IResult<&str, Term> {
     alt((
         terminated(preceded(char('('), parse_term_non_consuming), char(')')),
+        parse_nat,
         map(parse_variable, Term::Variable),
         map(parse_abstraction, Term::Abstraction),
     ))(input)
@@ -77,6 +83,7 @@ fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
 pub fn parse_term(input: &str) -> Result<Term> {
     alt((
         map(all_consuming(parse_application), Term::Application),
+        all_consuming(parse_nat),
         map(all_consuming(parse_variable), Term::Variable),
         map(all_consuming(parse_abstraction), Term::Abstraction),
     ))(input)
@@ -316,5 +323,29 @@ mod test {
         let serialised_term = format!("{term}");
         let parsed_term = parse_term(&serialised_term).unwrap();
         assert_eq!(term, parsed_term);
+    }
+
+    #[test]
+    fn parse_nat_0() {
+        let term = parse_term("0").unwrap();
+        assert_eq!(term, parse_term("λs.λz.z").unwrap());
+    }
+
+    #[test]
+    fn parse_nat_1() {
+        let term = parse_term("1").unwrap();
+        assert_eq!(term, parse_term("λs.λz.s z").unwrap());
+    }
+
+    #[test]
+    fn parse_nat_2() {
+        let term = parse_term("2").unwrap();
+        assert_eq!(term, parse_term("λs.λz.s (s z)").unwrap());
+    }
+
+    #[test]
+    fn parse_complex_nat() {
+        let term = parse_term("λa.1 2").unwrap();
+        assert_eq!(term, parse_term("λa.(λs.λz.s z) (λs.λz.s (s z))").unwrap());
     }
 }
