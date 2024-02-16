@@ -106,11 +106,17 @@ pub struct Application(Box<Term>, Box<Term>);
 
 impl Display for Application {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // check if the second arg is also an application
-        match self.1.as_ref() {
-            Term::Application(_) => write!(f, "{} ({})", self.0, self.1),
-            _ => write!(f, "{} {}", self.0, self.1),
-        }
+        let term_1 = if let Term::Abstraction(_) = *self.0 {
+            format!("({})", self.0)
+        } else {
+            format!("{}", self.0)
+        };
+        let term_2 = if let Term::Application(_) = *self.1 {
+            format!("({})", self.1)
+        } else {
+            format!("{}", self.1)
+        };
+        write!(f, "{} {}", term_1, term_2)
     }
 }
 
@@ -197,7 +203,7 @@ mod test {
     }
 
     #[test]
-    fn abstraction_association_incorrect_behaviour() {
+    fn abstraction_association() {
         let term_1 = Term::Application(Application(
             Box::new(Term::Abstraction(Abstraction {
                 arg: Variable('x'),
@@ -213,7 +219,7 @@ mod test {
             ))),
         });
 
-        assert_eq!(format!("{term_1}"), format!("{term_2}"));
+        assert_ne!(format!("{term_1}"), format!("{term_2}"));
     }
 
     #[test]
