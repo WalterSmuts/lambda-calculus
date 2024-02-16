@@ -197,6 +197,26 @@ mod test {
     }
 
     #[test]
+    fn abstraction_association_incorrect_behaviour() {
+        let term_1 = Term::Application(Application(
+            Box::new(Term::Abstraction(Abstraction {
+                arg: Variable('x'),
+                body: Box::new(Term::Variable(Variable('y'))),
+            })),
+            Box::new(Term::Variable(Variable('z'))),
+        ));
+        let term_2 = Term::Abstraction(Abstraction {
+            arg: Variable('x'),
+            body: Box::new(Term::Application(Application(
+                Box::new(Term::Variable(Variable('y'))),
+                Box::new(Term::Variable(Variable('z'))),
+            ))),
+        });
+
+        assert_eq!(format!("{term_1}"), format!("{term_2}"));
+    }
+
+    #[test]
     fn test_reduction_of_true() {
         use parsing::parse_term;
         let mut term = parse_term("(λx.λy.x) a b").unwrap();
