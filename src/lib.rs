@@ -106,10 +106,16 @@ pub struct Application(Box<Term>, Box<Term>);
 
 impl Display for Application {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let term_1 = if let Term::Abstraction(_) = *self.0 {
-            format!("({})", self.0)
-        } else {
-            format!("{}", self.0)
+        let term_1 = match &*self.0 {
+            Term::Abstraction(_) => format!("({})", self.0),
+            Term::Application(Application(_, second_term_first_application)) => {
+                if let Term::Abstraction(..) = **second_term_first_application {
+                    format!("({})", self.0)
+                } else {
+                    format!("{}", self.0)
+                }
+            }
+            _ => format!("{}", self.0),
         };
         let term_2 = if let Term::Application(_) = *self.1 {
             format!("({})", self.1)
