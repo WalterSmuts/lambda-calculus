@@ -151,6 +151,40 @@ impl From<u32> for Term {
     }
 }
 
+impl TryFrom<Term> for u32 {
+    type Error = anyhow::Error;
+
+    fn try_from(mut term: Term) -> Result<Self, Self::Error> {
+        let abstraction = match term {
+            Term::Abstraction(abstraction) => abstraction,
+            _ => return Err(anyhow!("root expected abstraction {term}")),
+        };
+        let var = abstraction.arg;
+        let var = Term::Variable(var);
+        term = *abstraction.body;
+
+        term = match term {
+            Term::Abstraction(abstraction) => *abstraction.body,
+            _ => return Err(anyhow!("Second shell expected abstraction")),
+        };
+
+        let mut count = 0;
+        while let Term::Application(application) = term {
+            if *application.0 != var {
+                return Err(anyhow!("Expected application of {var}"));
+            }
+            term = *application.1;
+            count += 1;
+        }
+        match term {
+            Term::Variable(Variable::Lexical(_)) => {}
+            Term::Variable(Variable::Semantic(..)) => {}
+            _ => return Err(anyhow!("First non-application not a variable {term}")),
+        };
+        Ok(count)
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -248,5 +282,14 @@ mod test {
         let mut term = parse_term("(λx.λy.y) a b").unwrap();
         term.reduce();
         assert_eq!(term, parse_term("b").unwrap());
+    }
+
+    #[test]
+    fn converting_between_nat_and_lambda_representation() {
+        for i in 0..100 {
+            let term: Term = i.into();
+            let nat = term.try_into().unwrap();
+            assert_eq!(i, nat);
+        }
     }
 }
