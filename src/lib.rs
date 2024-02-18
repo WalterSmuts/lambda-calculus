@@ -331,4 +331,19 @@ mod test {
             assert_eq!(i, nat);
         }
     }
+
+    #[test]
+    fn addition() {
+        use crate::parsing::parse_term;
+        for i in 0..10 {
+            for j in 0..10 {
+                let plus: Term = parse_term("λm.λn.λf.λx.m f (n f x)").unwrap();
+                let mut two_plus_three: Term =
+                    parsing::parse_term(&format!("({plus}) ({i}) ({j})")).unwrap();
+                two_plus_three.reduce();
+                let result: u32 = two_plus_three.try_into().unwrap();
+                assert_eq!(i + j, result);
+            }
+        }
+    }
 }
