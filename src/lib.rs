@@ -87,7 +87,7 @@ impl Term {
     fn substitute_variables_with_arg(&mut self, variable: &Variable, arg: &Term) {
         match self {
             Term::Variable(x) => {
-                if *x == *variable {
+                if x == variable {
                     *self = arg.clone();
                 }
             }
