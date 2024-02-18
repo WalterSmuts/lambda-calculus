@@ -1,6 +1,8 @@
-use std::{fmt::Display, sync::atomic::AtomicUsize};
+use std::fmt::Display;
+use std::sync::atomic::AtomicUsize;
 
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
+use anyhow::Result;
 
 pub mod parsing;
 
