@@ -8,6 +8,7 @@ use nom::combinator::all_consuming;
 use nom::combinator::map;
 use nom::error::Error;
 use nom::multi::fold_many1;
+use nom::multi::many0;
 use nom::sequence::preceded;
 use nom::sequence::terminated;
 use nom::sequence::tuple;
@@ -52,7 +53,7 @@ fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
 fn parse_application(input: &str) -> IResult<&str, Application> {
     let (rest, term) = parse_term_non_consuming_non_application(input)?;
     let (rest, term) = fold_many1(
-        preceded(char(' '), parse_term_non_consuming_non_application),
+        preceded(many0(char(' ')), parse_term_non_consuming_non_application),
         move || term.clone(),
         |left_term, right_term| {
             Term::Application(Application(Box::new(left_term), Box::new(right_term)))
@@ -357,6 +358,13 @@ mod test {
     fn parse_compact_abstraction() {
         let term = parse_term("λx.λy.x").unwrap();
         let compact_term = parse_term("λxy.x").unwrap();
+        assert_eq!(term, compact_term);
+    }
+
+    #[test]
+    fn parse_compact_application() {
+        let term = parse_term("abc").unwrap();
+        let compact_term = parse_term("a b c").unwrap();
         assert_eq!(term, compact_term);
     }
 }
