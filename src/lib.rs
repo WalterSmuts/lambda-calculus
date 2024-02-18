@@ -59,11 +59,23 @@ impl Term {
             Term::Abstraction(abstraction) => abstraction.body.reduce_one_step(),
             Term::Application(application) => {
                 let t1 = &mut application.0;
-                let t2 = &application.1;
+                let t2 = &mut application.1;
 
                 let x = match &**t1 {
                     Term::Abstraction(abstraction) => abstraction.substitute(t2),
-                    _ => return t1.reduce_one_step(),
+                    _ => {
+                        let t1_result = t1.reduce_one_step();
+                        if t1_result.is_ok() {
+                            return t1_result;
+                        }
+                        let t2_result = t2.reduce_one_step();
+                        if t2_result.is_ok() {
+                            return t2_result;
+                        }
+                        return Err(anyhow!(
+                            "Had two options, neither of which worked out: {t1_result:?} and {t2_result:?}"
+                        ));
+                    }
                 };
                 *self = x;
                 Ok(())
