@@ -29,20 +29,24 @@ fn parse_variable(input: &str) -> IResult<&str, Variable> {
     Ok((remaining_input, variable))
 }
 
-fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
-    preceded(
-        char('λ'),
-        map(
-            tuple((
-                parse_variable,
+fn parse_abstraction_inner(input: &str) -> IResult<&str, Abstraction> {
+    map(
+        tuple((
+            parse_variable,
+            alt((
                 preceded(char('.'), parse_term_non_consuming),
+                map(parse_abstraction_inner, Term::Abstraction),
             )),
-            |(arg, body)| Abstraction {
-                arg,
-                body: Box::new(body),
-            },
-        ),
+        )),
+        |(arg, body)| Abstraction {
+            arg,
+            body: Box::new(body),
+        },
     )(input)
+}
+
+fn parse_abstraction(input: &str) -> IResult<&str, Abstraction> {
+    preceded(char('λ'), parse_abstraction_inner)(input)
 }
 
 fn parse_application(input: &str) -> IResult<&str, Application> {
@@ -347,5 +351,12 @@ mod test {
     fn parse_complex_nat() {
         let term = parse_term("λa.1 2").unwrap();
         assert_eq!(term, parse_term("λa.(λs.λz.s z) (λs.λz.s (s z))").unwrap());
+    }
+
+    #[test]
+    fn parse_compact_abstraction() {
+        let term = parse_term("λx.λy.x").unwrap();
+        let compact_term = parse_term("λxy.x").unwrap();
+        assert_eq!(term, compact_term);
     }
 }
