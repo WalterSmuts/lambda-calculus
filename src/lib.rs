@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::atomic::AtomicUsize};
 
 use anyhow::{anyhow, Result};
 
@@ -22,7 +22,34 @@ impl Display for Term {
 }
 
 impl Term {
+    fn alpha_convert(&mut self) {
+        static COUNT: AtomicUsize = AtomicUsize::new(0);
+        match self {
+            Term::Variable(_) => (),
+            Term::Abstraction(abstraction) => match abstraction.arg {
+                Variable::Lexical(c) => {
+                    abstraction.body.alpha_convert();
+                    let new_variable = Variable::Semantic(
+                        c,
+                        COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                    );
+                    abstraction.body.substitute_variables_with_arg(
+                        &abstraction.arg,
+                        &Term::Variable(new_variable.clone()),
+                    );
+                    abstraction.arg = new_variable;
+                }
+                Variable::Semantic(..) => (),
+            },
+            Term::Application(application) => {
+                application.0.alpha_convert();
+                application.1.alpha_convert();
+            }
+        }
+    }
+
     pub fn reduce(&mut self) {
+        self.alpha_convert();
         while let Ok(()) = self.reduce_one_step() {}
     }
 
