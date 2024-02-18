@@ -346,4 +346,19 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn multiplication() {
+        use crate::parsing::parse_term;
+        for i in 0..10 {
+            for j in 0..10 {
+                let multiply: Term = parse_term("λm.λn.λf.m (n f)").unwrap();
+                let mut two_plus_three: Term =
+                    parsing::parse_term(&format!("({multiply}) ({i}) ({j})")).unwrap();
+                two_plus_three.reduce();
+                let result: u32 = two_plus_three.try_into().unwrap();
+                assert_eq!(i * j, result);
+            }
+        }
+    }
 }
