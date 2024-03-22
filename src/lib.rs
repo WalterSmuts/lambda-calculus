@@ -29,7 +29,7 @@ impl Term {
         match self {
             Term::Variable(_) => (),
             Term::Abstraction(abstraction) => match abstraction.arg {
-                Variable::Lexical(c) => {
+                Variable::Lexical(c) | Variable::Semantic(c, _) => {
                     abstraction.body.alpha_convert();
                     let new_variable = Variable::Semantic(
                         c,
@@ -41,7 +41,6 @@ impl Term {
                     );
                     abstraction.arg = new_variable;
                 }
-                Variable::Semantic(..) => (),
             },
             Term::Application(application) => {
                 application.0.alpha_convert();
@@ -52,7 +51,9 @@ impl Term {
 
     pub fn reduce(&mut self) {
         self.alpha_convert();
-        while let Ok(()) = self.reduce_one_step() {}
+        while let Ok(()) = self.reduce_one_step() {
+            self.alpha_convert();
+        }
     }
 
     fn reduce_one_step(&mut self) -> Result<()> {
@@ -362,5 +363,17 @@ mod test {
                 assert_eq!(i * j, result);
             }
         }
+    }
+
+    #[test]
+    fn factorial() {
+        use crate::parsing::parse_term;
+        let factorial: Term =
+            parse_term("λk.k(λp.p(λabg.g(λfx.f(afx))(λf.a(bf))))(λg.g(λh.h)(λh.h))(λab.b)")
+                .unwrap();
+        let mut five_factorial: Term = parsing::parse_term(&format!("({factorial}) 5")).unwrap();
+        five_factorial.reduce();
+        let result: u32 = five_factorial.try_into().unwrap();
+        assert_eq!(120, result);
     }
 }
