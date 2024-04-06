@@ -473,7 +473,13 @@ mod test {
 
     #[test]
     fn parse_typed_abstraction() {
-        let _ = parse_term("λx:Boolean.x").unwrap();
-        let _ = parse_term("λx:Integer.x").unwrap();
+        let mut typed_integer_abstraction = parse_term("λx:Boolean.x").unwrap();
+        let untyped_integer_abstraction = parse_term("λx.x").unwrap();
+        let mut typed_boolean_abstraction = parse_term("λx:Integer.x").unwrap();
+        let untyped_boolean_abstraction = parse_term("λx.x").unwrap();
+        typed_integer_abstraction.erase_types();
+        typed_boolean_abstraction.erase_types();
+        assert_eq!(typed_integer_abstraction, untyped_integer_abstraction);
+        assert_eq!(typed_boolean_abstraction, untyped_boolean_abstraction);
     }
 }
