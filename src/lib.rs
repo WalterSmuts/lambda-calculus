@@ -377,10 +377,10 @@ mod test {
         for i in 0..10 {
             for j in 0..10 {
                 let plus: Term = parse_term("λm.λn.λf.λx.m f (n f x)").unwrap();
-                let mut two_plus_three: Term =
+                let mut addition_expression: Term =
                     parsing::parse_term(&format!("({plus}) ({i}) ({j})")).unwrap();
-                two_plus_three.reduce();
-                let result: u32 = two_plus_three.try_into().unwrap();
+                addition_expression.reduce();
+                let result: u32 = addition_expression.try_into().unwrap();
                 assert_eq!(i + j, result);
             }
         }
@@ -392,10 +392,10 @@ mod test {
         for i in 0..10 {
             for j in 0..10 {
                 let multiply: Term = parse_term("λm.λn.λf.m (n f)").unwrap();
-                let mut two_plus_three: Term =
+                let mut multiplication_expression: Term =
                     parsing::parse_term(&format!("({multiply}) ({i}) ({j})")).unwrap();
-                two_plus_three.reduce();
-                let result: u32 = two_plus_three.try_into().unwrap();
+                multiplication_expression.reduce();
+                let result: u32 = multiplication_expression.try_into().unwrap();
                 assert_eq!(i * j, result);
             }
         }
