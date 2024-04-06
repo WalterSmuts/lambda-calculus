@@ -193,6 +193,38 @@ impl From<u32> for Term {
     }
 }
 
+impl TryFrom<Term> for bool {
+    type Error = anyhow::Error;
+
+    fn try_from(term: Term) -> Result<Self, Self::Error> {
+        match term {
+            Term::Abstraction(outer_abstraction) => {
+                let inner_term = *outer_abstraction.body;
+                match inner_term {
+                    Term::Abstraction(inner_abstraction) => match *inner_abstraction.body {
+                        Term::Variable(inner_variable) => {
+                            if inner_variable == outer_abstraction.arg {
+                                return Ok(true);
+                            };
+                            if inner_variable == inner_abstraction.arg {
+                                return Ok(false);
+                            };
+                            Err(anyhow!("Last variable is not bound"))
+                        }
+                        _ => Err(anyhow!(
+                            "Last term needs to be a variable {inner_abstraction}"
+                        )),
+                    },
+                    _ => Err(anyhow!(
+                        "Inner-term term needs to be an abstraction {inner_term}"
+                    )),
+                }
+            }
+            _ => Err(anyhow!("Outer-most term needs to be an abstraction {term}")),
+        }
+    }
+}
+
 impl TryFrom<Term> for u32 {
     type Error = anyhow::Error;
 
@@ -250,7 +282,9 @@ mod test {
                 body: Box::new(Term::Variable(Variable::Lexical('x'))),
             })),
         });
-        assert_eq!("λx.λy.x", format!("{lambda_true}"))
+        assert_eq!("λx.λy.x", format!("{lambda_true}"));
+        let typed_true: bool = lambda_true.try_into().unwrap();
+        assert!(typed_true);
     }
 
     #[test]
@@ -262,7 +296,9 @@ mod test {
                 body: Box::new(Term::Variable(Variable::Lexical('y'))),
             })),
         });
-        assert_eq!("λx.λy.y", format!("{lambda_false}"))
+        assert_eq!("λx.λy.y", format!("{lambda_false}"));
+        let typed_false: bool = lambda_false.try_into().unwrap();
+        assert!(!typed_false);
     }
 
     #[test]
