@@ -21,7 +21,25 @@ struct LetBinding {
     term: Term,
 }
 
-fn parse_variable(input: &str) -> IResult<&str, Variable> {
+fn parse_type(input: &str) -> IResult<&str, LambdaType> {
+    alt((
+        map(tag("Boolean"), |_| LambdaType::Boolean),
+        map(tag("Integer"), |_| LambdaType::Integer),
+    ))(input)
+}
+
+fn parse_typed_variable(input: &str) -> IResult<&str, Variable> {
+    map(
+        tuple((parse_untyped_variable, preceded(char(':'), parse_type))),
+        |(var, lambda_type)| {
+            let mut var = var.clone();
+            var.set_type(lambda_type);
+            var
+        },
+    )(input)
+}
+
+fn parse_untyped_variable(input: &str) -> IResult<&str, Variable> {
     let (remaining_input, parsed_char) = anychar(input)?;
     match parsed_char {
         '(' | ')' | 'λ' | '.' | '=' | '\n' => {
@@ -35,6 +53,10 @@ fn parse_variable(input: &str) -> IResult<&str, Variable> {
     let variable = Variable::new(parsed_char);
 
     Ok((remaining_input, variable))
+}
+
+fn parse_variable(input: &str) -> IResult<&str, Variable> {
+    alt((parse_typed_variable, parse_untyped_variable))(input)
 }
 
 fn parse_abstraction_inner(input: &str) -> IResult<&str, Abstraction> {
@@ -447,5 +469,11 @@ mod test {
         term.reduce();
         let result: u32 = term.try_into().unwrap();
         assert_eq!(result, 3)
+    }
+
+    #[test]
+    fn parse_typed_abstraction() {
+        let _ = parse_term("λx:Boolean.x").unwrap();
+        let _ = parse_term("λx:Integer.x").unwrap();
     }
 }

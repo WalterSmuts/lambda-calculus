@@ -119,6 +119,7 @@ impl Term {
 pub struct Variable {
     inner: char,
     identifier: Option<usize>,
+    lambda_type: Option<LambdaType>,
 }
 
 impl Variable {
@@ -126,7 +127,12 @@ impl Variable {
         Self {
             inner: c,
             identifier: None,
+            lambda_type: None,
         }
+    }
+
+    pub fn set_type(&mut self, lambda_type: LambdaType) {
+        self.lambda_type = Some(lambda_type);
     }
 
     pub fn set_identifier(&mut self, identifier: usize) {
@@ -143,6 +149,12 @@ impl Display for Variable {
             var.fmt(f)
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum LambdaType {
+    Boolean,
+    Integer,
 }
 
 #[derive(Debug, PartialEq, Clone)]
