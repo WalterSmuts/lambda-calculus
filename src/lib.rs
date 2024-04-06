@@ -23,6 +23,22 @@ impl Display for Term {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+struct TypingContext(Vec<(Variable, LambdaType)>);
+
+impl TypingContext {
+    fn get_type_of(&self, variable: &Variable) -> Option<LambdaType> {
+        self.0
+            .iter()
+            .find(|judgement| judgement.0 == *variable)
+            .map(|judgement| judgement.1.clone())
+    }
+
+    fn insert(&mut self, variable: &Variable, lambda_type: &LambdaType) {
+        self.0.push((variable.clone(), lambda_type.clone()))
+    }
+}
+
 impl Term {
     fn alpha_convert(&mut self) {
         static COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -129,6 +145,77 @@ impl Term {
             }
         }
     }
+
+    pub fn infer_type(&self) -> Option<LambdaType> {
+        self.infer_type_with_context(&TypingContext::default())
+    }
+
+    fn infer_type_with_context(&self, context: &TypingContext) -> Option<LambdaType> {
+        let maybe_inferred_type = match self {
+            Term::Variable(variable) => context.get_type_of(variable),
+            Term::Abstraction(abstraction) => {
+                if let Some(lambda_type) = &abstraction.lambda_type {
+                    return Some(lambda_type.clone());
+                }
+                let lambda_type = abstraction.arg.clone().lambda_type?;
+                let mut context = context.clone();
+                context.insert(&abstraction.arg, &lambda_type);
+                abstraction.body.infer_type_with_context(&context)
+            }
+            Term::Application(application) => {
+                let first_term = &application.0;
+                let second_term = &application.1;
+                let first_terms_type = first_term.infer_type_with_context(context)?;
+                let second_terms_type = second_term.infer_type_with_context(context)?;
+                let LambdaType::Function(input_type, return_type) = &first_terms_type else {
+                    return None;
+                };
+
+                if **input_type != second_terms_type {
+                    return None;
+                }
+
+                Some(*return_type.clone())
+            }
+        };
+
+        if let Some(inferred_type) = maybe_inferred_type {
+            return Some(inferred_type);
+        }
+
+        self.infer_base_type()
+    }
+
+    pub fn is_well_typed(&self) -> bool {
+        self.infer_type().is_some()
+    }
+
+    fn infer_base_type(&self) -> Option<LambdaType> {
+        //////////////////////////////////////////
+        let a = "λm.λn.λf.λx.m f (n f x)";
+        let b = format!("{self}");
+        if a == b {
+            return Some(LambdaType::Function(
+                Box::new(LambdaType::Integer),
+                Box::new(LambdaType::Function(
+                    Box::new(LambdaType::Integer),
+                    Box::new(LambdaType::Integer),
+                )),
+            ));
+        }
+        //////////////////////////////////////////
+        // TODO: Remove clones
+        let converted: Result<bool> = self.clone().try_into();
+        if converted.is_ok() {
+            return Some(LambdaType::Boolean);
+        }
+        // TODO: Remove clones
+        let converted: Result<u32> = self.clone().try_into();
+        if converted.is_ok() {
+            return Some(LambdaType::Integer);
+        }
+        None
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -178,6 +265,7 @@ impl Display for Variable {
 pub enum LambdaType {
     Boolean,
     Integer,
+    Function(Box<LambdaType>, Box<LambdaType>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -472,5 +560,31 @@ mod test {
         five_factorial.reduce();
         let result: u32 = five_factorial.try_into().unwrap();
         assert_eq!(120, result);
+    }
+
+    #[test]
+    fn typed_addition() {
+        use crate::parsing::parse_term;
+        for i in 0..10 {
+            for j in 0..10 {
+                let plus = "λm:Integer.λn:Integer.λf.λx.m f (n f x)";
+                let mut expression: Term = parse_term(&format!("({plus}) ({i}) ({j})")).unwrap();
+                assert!(expression.is_well_typed());
+                expression.reduce();
+                let result: u32 = expression.try_into().unwrap();
+                assert_eq!(i + j, result);
+            }
+        }
+    }
+
+    #[test]
+    fn typed_composed_addition() {
+        use crate::parsing::parse_term;
+        let plus = "λm:Integer.λn:Integer.λf.λx.m f (n f x)";
+        let mut expression: Term = parse_term(&format!("({plus}) (({plus}) 1 2) (1)")).unwrap();
+        assert!(expression.is_well_typed());
+        expression.reduce();
+        let result: u32 = expression.try_into().unwrap();
+        assert_eq!(4, result);
     }
 }
