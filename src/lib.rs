@@ -49,7 +49,22 @@ impl Term {
         }
     }
 
+    fn erase_types(&mut self) {
+        match self {
+            Term::Variable(variable) => variable.erase_types(),
+            Term::Abstraction(abstraction) => {
+                abstraction.body.erase_types();
+                abstraction.arg.erase_types();
+            }
+            Term::Application(application) => {
+                application.0.erase_types();
+                application.1.erase_types();
+            }
+        }
+    }
+
     pub fn reduce(&mut self) {
+        self.erase_types();
         self.alpha_convert();
         while let Ok(()) = self.reduce_one_step() {
             self.alpha_convert();
@@ -137,6 +152,13 @@ impl Variable {
 
     pub fn set_identifier(&mut self, identifier: usize) {
         self.identifier = Some(identifier)
+    }
+}
+
+impl Variable {
+    fn erase_types(&mut self) {
+        let Variable { inner: c, .. } = self;
+        *self = Variable::new(*c)
     }
 }
 
