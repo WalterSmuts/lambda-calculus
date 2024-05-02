@@ -1,6 +1,7 @@
 use super::*;
 use anyhow::Result;
 use nom::branch::alt;
+use nom::bytes::complete::tag;
 use nom::character::complete::anychar;
 use nom::character::complete::char;
 use nom::character::complete::digit1;
@@ -14,10 +15,16 @@ use nom::sequence::terminated;
 use nom::sequence::tuple;
 use nom::IResult;
 
+#[derive(PartialEq, Debug)]
+struct LetBinding {
+    var: Variable,
+    term: Term,
+}
+
 fn parse_variable(input: &str) -> IResult<&str, Variable> {
     let (remaining_input, parsed_char) = anychar(input)?;
     match parsed_char {
-        '(' | ')' | 'λ' | '.' => {
+        '(' | ')' | 'λ' | '.' | '=' | '\n' => {
             return Err(nom::Err::Error(Error::new(
                 "{parsed_char} can't be a variable name.",
                 nom::error::ErrorKind::Tag,
@@ -85,15 +92,41 @@ fn parse_term_non_consuming(input: &str) -> IResult<&str, Term> {
     ))(input)
 }
 
+fn parse_let_binding(input: &str) -> IResult<&str, LetBinding> {
+    let (input, var) = preceded(tag("let "), parse_variable)(input)?;
+    let (input, _) = tag(" = ")(input)?;
+    let (input, term) = alt((
+        map(parse_application, Term::Application),
+        parse_nat,
+        map(parse_variable, Term::Variable),
+        map(parse_abstraction, Term::Abstraction),
+    ))(input)?;
+    let (input, _) = char('\n')(input)?;
+    Ok((input, LetBinding { var, term }))
+}
+
 pub fn parse_term(input: &str) -> Result<Term> {
-    alt((
+    let (input, mut let_bindings) = many0(parse_let_binding)(input).unwrap();
+
+    let mut term = alt((
         map(all_consuming(parse_application), Term::Application),
         all_consuming(parse_nat),
         map(all_consuming(parse_variable), Term::Variable),
         map(all_consuming(parse_abstraction), Term::Abstraction),
     ))(input)
     .map(|(_rest, result)| result)
-    .map_err(|err| anyhow::anyhow!("{err}"))
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
+
+    while let Some(let_binding) = let_bindings.pop() {
+        term = Term::Application(Application(
+            Box::new(Term::Abstraction(Abstraction {
+                arg: let_binding.var,
+                body: Box::new(term),
+            })),
+            Box::new(let_binding.term),
+        ))
+    }
+    Ok(term)
 }
 
 #[cfg(test)]
@@ -366,5 +399,53 @@ mod test {
         let term = parse_term("abc").unwrap();
         let compact_term = parse_term("a b c").unwrap();
         assert_eq!(term, compact_term);
+    }
+
+    #[test]
+    fn single_let_binding() {
+        let (rest, let_binding) = parse_let_binding("let x = y\n").unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(
+            let_binding,
+            LetBinding {
+                var: Variable::Lexical('x'),
+                term: Term::Variable(Variable::Lexical('y'))
+            }
+        )
+    }
+
+    #[test]
+    fn single_let_term() {
+        use indoc::indoc;
+        let term = parse_term(indoc! {"
+        let x = y
+        x"
+        })
+        .unwrap();
+        assert_eq!(
+            term,
+            Term::Application(Application(
+                Box::new(Term::Abstraction(Abstraction {
+                    arg: Variable::Lexical('x'),
+                    body: Box::new(Term::Variable(Variable::Lexical('x'))),
+                })),
+                Box::new(Term::Variable(Variable::Lexical('y')))
+            ))
+        )
+    }
+
+    #[test]
+    fn let_bindings() {
+        use indoc::indoc;
+        let mut term = parse_term(indoc! {"
+        let x = 1
+        let y = 2
+        let p = λm.λn.λf.λx.m f (n f x)
+        p x y"
+        })
+        .unwrap();
+        term.reduce();
+        let result: u32 = term.try_into().unwrap();
+        assert_eq!(result, 3)
     }
 }

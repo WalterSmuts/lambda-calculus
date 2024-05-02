@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.79"
+indoc = "2.0.5"
 nom = "7.1.3"
