@@ -263,6 +263,7 @@ impl TryFrom<Term> for u32 {
 mod test {
 
     use super::*;
+    use crate::parsing::parse_term;
 
     #[test]
     fn identity() {
@@ -348,7 +349,6 @@ mod test {
 
     #[test]
     fn test_reduction_of_true() {
-        use parsing::parse_term;
         let mut term = parse_term("(λx.λy.x) a b").unwrap();
         term.reduce();
         assert_eq!(term, parse_term("a").unwrap());
@@ -356,7 +356,6 @@ mod test {
 
     #[test]
     fn test_reduction_of_false() {
-        use parsing::parse_term;
         let mut term = parse_term("(λx.λy.y) a b").unwrap();
         term.reduce();
         assert_eq!(term, parse_term("b").unwrap());
@@ -373,7 +372,6 @@ mod test {
 
     #[test]
     fn addition() {
-        use crate::parsing::parse_term;
         for i in 0..10 {
             for j in 0..10 {
                 let plus: Term = parse_term("λm.λn.λf.λx.m f (n f x)").unwrap();
@@ -388,7 +386,6 @@ mod test {
 
     #[test]
     fn multiplication() {
-        use crate::parsing::parse_term;
         for i in 0..10 {
             for j in 0..10 {
                 let multiply: Term = parse_term("λm.λn.λf.m (n f)").unwrap();
@@ -403,7 +400,6 @@ mod test {
 
     #[test]
     fn factorial() {
-        use crate::parsing::parse_term;
         let factorial: Term =
             parse_term("λk.k(λp.p(λabg.g(λfx.f(afx))(λf.a(bf))))(λg.g(λh.h)(λh.h))(λab.b)")
                 .unwrap();
