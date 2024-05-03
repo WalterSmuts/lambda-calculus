@@ -28,20 +28,20 @@ impl Term {
         static COUNT: AtomicUsize = AtomicUsize::new(0);
         match self {
             Term::Variable(_) => (),
-            Term::Abstraction(abstraction) => match abstraction.arg {
-                Variable::Lexical(c) | Variable::Semantic(c, _) => {
+            Term::Abstraction(abstraction) => {
+                let Variable { inner: c, .. } = abstraction.arg;
+                {
                     abstraction.body.alpha_convert();
-                    let new_variable = Variable::Semantic(
-                        c,
-                        COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    );
+                    let mut new_variable = Variable::new(c);
+                    new_variable
+                        .set_identifier(COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                     abstraction.body.substitute_variables_with_arg(
                         &abstraction.arg,
                         &Term::Variable(new_variable.clone()),
                     );
                     abstraction.arg = new_variable;
                 }
-            },
+            }
             Term::Application(application) => {
                 application.0.alpha_convert();
                 application.1.alpha_convert();
@@ -116,16 +116,31 @@ impl Term {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Variable {
-    Lexical(char),
-    Semantic(char, usize),
+pub struct Variable {
+    inner: char,
+    identifier: Option<usize>,
+}
+
+impl Variable {
+    pub fn new(c: char) -> Self {
+        Self {
+            inner: c,
+            identifier: None,
+        }
+    }
+
+    pub fn set_identifier(&mut self, identifier: usize) {
+        self.identifier = Some(identifier)
+    }
 }
 
 impl Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Variable::Lexical(c) => c.fmt(f),
-            Variable::Semantic(c, i) => write!(f, "{c}{i}"),
+        let var = self.inner;
+        if let Some(identifier) = self.identifier {
+            write!(f, "{var}_{identifier}")
+        } else {
+            var.fmt(f)
         }
     }
 }
@@ -176,17 +191,17 @@ impl Display for Application {
 
 impl From<u32> for Term {
     fn from(value: u32) -> Self {
-        let mut body: Box<Term> = Box::new(Term::Variable(Variable::Lexical('z')));
+        let mut body: Box<Term> = Box::new(Term::Variable(Variable::new('z')));
         for _ in 0..value {
             body = Box::new(Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('s'))),
+                Box::new(Term::Variable(Variable::new('s'))),
                 body,
             )))
         }
         Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('s'),
+            arg: Variable::new('s'),
             body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('z'),
+                arg: Variable::new('z'),
                 body,
             })),
         })
@@ -251,8 +266,7 @@ impl TryFrom<Term> for u32 {
             count += 1;
         }
         match term {
-            Term::Variable(Variable::Lexical(_)) => {}
-            Term::Variable(Variable::Semantic(..)) => {}
+            Term::Variable(..) => {}
             _ => return Err(anyhow!("First non-application not a variable {term}")),
         };
         Ok(count)
@@ -268,8 +282,8 @@ mod test {
     #[test]
     fn identity() {
         let identity = Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('x'),
-            body: Box::new(Term::Variable(Variable::Lexical('x'))),
+            arg: Variable::new('x'),
+            body: Box::new(Term::Variable(Variable::new('x'))),
         });
         assert_eq!("λx.x", format!("{identity}"))
     }
@@ -277,10 +291,10 @@ mod test {
     #[test]
     fn test_true() {
         let lambda_true = Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('x'),
+            arg: Variable::new('x'),
             body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('y'),
-                body: Box::new(Term::Variable(Variable::Lexical('x'))),
+                arg: Variable::new('y'),
+                body: Box::new(Term::Variable(Variable::new('x'))),
             })),
         });
         assert_eq!("λx.λy.x", format!("{lambda_true}"));
@@ -291,10 +305,10 @@ mod test {
     #[test]
     fn test_false() {
         let lambda_false = Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('x'),
+            arg: Variable::new('x'),
             body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('y'),
-                body: Box::new(Term::Variable(Variable::Lexical('y'))),
+                arg: Variable::new('y'),
+                body: Box::new(Term::Variable(Variable::new('y'))),
             })),
         });
         assert_eq!("λx.λy.y", format!("{lambda_false}"));
@@ -307,18 +321,18 @@ mod test {
         // Application is left associative per default
         let left_associative = Term::Application(Application(
             Box::new(Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('x'))),
-                Box::new(Term::Variable(Variable::Lexical('y'))),
+                Box::new(Term::Variable(Variable::new('x'))),
+                Box::new(Term::Variable(Variable::new('y'))),
             ))),
-            Box::new(Term::Variable(Variable::Lexical('z'))),
+            Box::new(Term::Variable(Variable::new('z'))),
         ));
 
         // This one needs parenthesis to disambiguate
         let right_associative = Term::Application(Application(
-            Box::new(Term::Variable(Variable::Lexical('x'))),
+            Box::new(Term::Variable(Variable::new('x'))),
             Box::new(Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('y'))),
-                Box::new(Term::Variable(Variable::Lexical('z'))),
+                Box::new(Term::Variable(Variable::new('y'))),
+                Box::new(Term::Variable(Variable::new('z'))),
             ))),
         ));
         assert_ne!(
@@ -331,16 +345,16 @@ mod test {
     fn abstraction_association() {
         let term_1 = Term::Application(Application(
             Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('x'),
-                body: Box::new(Term::Variable(Variable::Lexical('y'))),
+                arg: Variable::new('x'),
+                body: Box::new(Term::Variable(Variable::new('y'))),
             })),
-            Box::new(Term::Variable(Variable::Lexical('z'))),
+            Box::new(Term::Variable(Variable::new('z'))),
         ));
         let term_2 = Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('x'),
+            arg: Variable::new('x'),
             body: Box::new(Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('y'))),
-                Box::new(Term::Variable(Variable::Lexical('z'))),
+                Box::new(Term::Variable(Variable::new('y'))),
+                Box::new(Term::Variable(Variable::new('z'))),
             ))),
         });
 

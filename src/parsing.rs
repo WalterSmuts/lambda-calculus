@@ -32,7 +32,7 @@ fn parse_variable(input: &str) -> IResult<&str, Variable> {
         }
         _ => (),
     };
-    let variable = Variable::Lexical(parsed_char);
+    let variable = Variable::new(parsed_char);
 
     Ok((remaining_input, variable))
 }
@@ -136,7 +136,7 @@ mod test {
     #[test]
     fn test_parse_variable() {
         let x = parse_term("x").unwrap();
-        assert_eq!(x, Term::Variable(Variable::Lexical('x')));
+        assert_eq!(x, Term::Variable(Variable::new('x')));
     }
 
     #[test]
@@ -145,8 +145,8 @@ mod test {
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('x'),
-                body: Box::new(Term::Variable(Variable::Lexical('x'))),
+                arg: Variable::new('x'),
+                body: Box::new(Term::Variable(Variable::new('x'))),
             })
         );
     }
@@ -157,8 +157,8 @@ mod test {
         assert_eq!(
             term,
             Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('x'))),
-                Box::new(Term::Variable(Variable::Lexical('y'))),
+                Box::new(Term::Variable(Variable::new('x'))),
+                Box::new(Term::Variable(Variable::new('y'))),
             ))
         );
     }
@@ -170,10 +170,10 @@ mod test {
             term,
             Term::Application(Application(
                 Box::new(Term::Application(Application(
-                    Box::new(Term::Variable(Variable::Lexical('a'))),
-                    Box::new(Term::Variable(Variable::Lexical('b'))),
+                    Box::new(Term::Variable(Variable::new('a'))),
+                    Box::new(Term::Variable(Variable::new('b'))),
                 ))),
-                Box::new(Term::Variable(Variable::Lexical('c'))),
+                Box::new(Term::Variable(Variable::new('c'))),
             ))
         );
     }
@@ -184,17 +184,17 @@ mod test {
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('x'),
+                arg: Variable::new('x'),
                 body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::Lexical('y'),
+                    arg: Variable::new('y'),
                     body: Box::new(Term::Abstraction(Abstraction {
-                        arg: Variable::Lexical('z'),
+                        arg: Variable::new('z'),
                         body: Box::new(Term::Application(Application(
                             Box::new(Term::Application(Application(
-                                Box::new(Term::Variable(Variable::Lexical('a'))),
-                                Box::new(Term::Variable(Variable::Lexical('b'))),
+                                Box::new(Term::Variable(Variable::new('a'))),
+                                Box::new(Term::Variable(Variable::new('b'))),
                             ))),
-                            Box::new(Term::Variable(Variable::Lexical('c'))),
+                            Box::new(Term::Variable(Variable::new('c'))),
                         ))),
                     })),
                 })),
@@ -209,10 +209,10 @@ mod test {
             term,
             Term::Application(Application(
                 Box::new(Term::Application(Application(
-                    Box::new(Term::Variable(Variable::Lexical('a'))),
-                    Box::new(Term::Variable(Variable::Lexical('b'))),
+                    Box::new(Term::Variable(Variable::new('a'))),
+                    Box::new(Term::Variable(Variable::new('b'))),
                 ))),
-                Box::new(Term::Variable(Variable::Lexical('c'))),
+                Box::new(Term::Variable(Variable::new('c'))),
             ))
         );
     }
@@ -223,10 +223,10 @@ mod test {
         assert_eq!(
             term,
             Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('a'))),
+                Box::new(Term::Variable(Variable::new('a'))),
                 Box::new(Term::Application(Application(
-                    Box::new(Term::Variable(Variable::Lexical('b'))),
-                    Box::new(Term::Variable(Variable::Lexical('c'))),
+                    Box::new(Term::Variable(Variable::new('b'))),
+                    Box::new(Term::Variable(Variable::new('c'))),
                 ))),
             ))
         );
@@ -238,8 +238,8 @@ mod test {
         assert_eq!(
             term,
             Term::Application(Application(
-                Box::new(Term::Variable(Variable::Lexical('a'))),
-                Box::new(Term::Variable(Variable::Lexical('b'))),
+                Box::new(Term::Variable(Variable::new('a'))),
+                Box::new(Term::Variable(Variable::new('b'))),
             ))
         );
     }
@@ -250,10 +250,10 @@ mod test {
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('x'),
+                arg: Variable::new('x'),
                 body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::Lexical('y'),
-                    body: Box::new(Term::Variable(Variable::Lexical('x'))),
+                    arg: Variable::new('y'),
+                    body: Box::new(Term::Variable(Variable::new('x'))),
                 })),
             })
         );
@@ -265,13 +265,13 @@ mod test {
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('y'),
+                arg: Variable::new('y'),
                 body: Box::new(Term::Application(Application(
                     Box::new(Term::Application(Application(
-                        Box::new(Term::Variable(Variable::Lexical('a'))),
-                        Box::new(Term::Variable(Variable::Lexical('b'))),
+                        Box::new(Term::Variable(Variable::new('a'))),
+                        Box::new(Term::Variable(Variable::new('b'))),
                     ))),
-                    Box::new(Term::Variable(Variable::Lexical('c'))),
+                    Box::new(Term::Variable(Variable::new('c'))),
                 ))),
             })
         );
@@ -284,10 +284,10 @@ mod test {
             term,
             Term::Application(Application(
                 Box::new(Term::Application(Application(
-                    Box::new(Term::Variable(Variable::Lexical('a'))),
-                    Box::new(Term::Variable(Variable::Lexical('b'))),
+                    Box::new(Term::Variable(Variable::new('a'))),
+                    Box::new(Term::Variable(Variable::new('b'))),
                 ))),
-                Box::new(Term::Variable(Variable::Lexical('c'))),
+                Box::new(Term::Variable(Variable::new('c'))),
             ))
         );
     }
@@ -298,27 +298,27 @@ mod test {
         assert_eq!(
             term,
             Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('x'),
+                arg: Variable::new('x'),
                 body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::Lexical('y'),
+                    arg: Variable::new('y'),
                     body: Box::new(Term::Application(Application(
                         Box::new(Term::Application(Application(
-                            Box::new(Term::Variable(Variable::Lexical('a'))),
-                            Box::new(Term::Variable(Variable::Lexical('b'))),
+                            Box::new(Term::Variable(Variable::new('a'))),
+                            Box::new(Term::Variable(Variable::new('b'))),
                         ))),
                         Box::new(Term::Abstraction(Abstraction {
-                            arg: Variable::Lexical('z'),
+                            arg: Variable::new('z'),
                             body: Box::new(Term::Abstraction(Abstraction {
-                                arg: Variable::Lexical('w'),
+                                arg: Variable::new('w'),
                                 body: Box::new(Term::Application(Application(
                                     Box::new(Term::Application(Application(
                                         Box::new(Term::Application(Application(
-                                            Box::new(Term::Variable(Variable::Lexical('c'))),
-                                            Box::new(Term::Variable(Variable::Lexical('d'))),
+                                            Box::new(Term::Variable(Variable::new('c'))),
+                                            Box::new(Term::Variable(Variable::new('d'))),
                                         ))),
-                                        Box::new(Term::Variable(Variable::Lexical('e'))),
+                                        Box::new(Term::Variable(Variable::new('e'))),
                                     ))),
-                                    Box::new(Term::Variable(Variable::Lexical('f'))),
+                                    Box::new(Term::Variable(Variable::new('f'))),
                                 ))),
                             })),
                         })),
@@ -331,27 +331,27 @@ mod test {
     #[test]
     fn test_round_trip() {
         let term = Term::Abstraction(Abstraction {
-            arg: Variable::Lexical('x'),
+            arg: Variable::new('x'),
             body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::Lexical('y'),
+                arg: Variable::new('y'),
                 body: Box::new(Term::Application(Application(
                     Box::new(Term::Application(Application(
-                        Box::new(Term::Variable(Variable::Lexical('a'))),
-                        Box::new(Term::Variable(Variable::Lexical('b'))),
+                        Box::new(Term::Variable(Variable::new('a'))),
+                        Box::new(Term::Variable(Variable::new('b'))),
                     ))),
                     Box::new(Term::Abstraction(Abstraction {
-                        arg: Variable::Lexical('z'),
+                        arg: Variable::new('z'),
                         body: Box::new(Term::Abstraction(Abstraction {
-                            arg: Variable::Lexical('w'),
+                            arg: Variable::new('w'),
                             body: Box::new(Term::Application(Application(
                                 Box::new(Term::Application(Application(
                                     Box::new(Term::Application(Application(
-                                        Box::new(Term::Variable(Variable::Lexical('c'))),
-                                        Box::new(Term::Variable(Variable::Lexical('d'))),
+                                        Box::new(Term::Variable(Variable::new('c'))),
+                                        Box::new(Term::Variable(Variable::new('d'))),
                                     ))),
-                                    Box::new(Term::Variable(Variable::Lexical('e'))),
+                                    Box::new(Term::Variable(Variable::new('e'))),
                                 ))),
-                                Box::new(Term::Variable(Variable::Lexical('f'))),
+                                Box::new(Term::Variable(Variable::new('f'))),
                             ))),
                         })),
                     })),
@@ -408,8 +408,8 @@ mod test {
         assert_eq!(
             let_binding,
             LetBinding {
-                var: Variable::Lexical('x'),
-                term: Term::Variable(Variable::Lexical('y'))
+                var: Variable::new('x'),
+                term: Term::Variable(Variable::new('y'))
             }
         )
     }
@@ -426,10 +426,10 @@ mod test {
             term,
             Term::Application(Application(
                 Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::Lexical('x'),
-                    body: Box::new(Term::Variable(Variable::Lexical('x'))),
+                    arg: Variable::new('x'),
+                    body: Box::new(Term::Variable(Variable::new('x'))),
                 })),
-                Box::new(Term::Variable(Variable::Lexical('y')))
+                Box::new(Term::Variable(Variable::new('y')))
             ))
         )
     }
