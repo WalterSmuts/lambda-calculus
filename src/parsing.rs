@@ -68,10 +68,7 @@ fn parse_abstraction_inner(input: &str) -> IResult<&str, Abstraction> {
                 map(parse_abstraction_inner, Term::Abstraction),
             )),
         )),
-        |(arg, body)| Abstraction {
-            arg,
-            body: Box::new(body),
-        },
+        |(arg, body)| Abstraction::new(arg, body),
     )(input)
 }
 
@@ -141,10 +138,7 @@ pub fn parse_term(input: &str) -> Result<Term> {
 
     while let Some(let_binding) = let_bindings.pop() {
         term = Term::Application(Application(
-            Box::new(Term::Abstraction(Abstraction {
-                arg: let_binding.var,
-                body: Box::new(term),
-            })),
+            Box::new(Term::Abstraction(Abstraction::new(let_binding.var, term))),
             Box::new(let_binding.term),
         ))
     }
@@ -166,10 +160,10 @@ mod test {
         let term = parse_term("λx.x").unwrap();
         assert_eq!(
             term,
-            Term::Abstraction(Abstraction {
-                arg: Variable::new('x'),
-                body: Box::new(Term::Variable(Variable::new('x'))),
-            })
+            Term::Abstraction(Abstraction::new(
+                Variable::new('x'),
+                Term::Variable(Variable::new('x')),
+            ))
         );
     }
 
@@ -205,22 +199,22 @@ mod test {
         let term = parse_term("λx.λy.λz.a b c").unwrap();
         assert_eq!(
             term,
-            Term::Abstraction(Abstraction {
-                arg: Variable::new('x'),
-                body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::new('y'),
-                    body: Box::new(Term::Abstraction(Abstraction {
-                        arg: Variable::new('z'),
-                        body: Box::new(Term::Application(Application(
+            Term::Abstraction(Abstraction::new(
+                Variable::new('x'),
+                Term::Abstraction(Abstraction::new(
+                    Variable::new('y'),
+                    Term::Abstraction(Abstraction::new(
+                        Variable::new('z'),
+                        Term::Application(Application(
                             Box::new(Term::Application(Application(
                                 Box::new(Term::Variable(Variable::new('a'))),
                                 Box::new(Term::Variable(Variable::new('b'))),
                             ))),
                             Box::new(Term::Variable(Variable::new('c'))),
-                        ))),
-                    })),
-                })),
-            })
+                        )),
+                    )),
+                ))
+            ),)
         );
     }
 
@@ -271,13 +265,13 @@ mod test {
         let term = parse_term("λx.(λy.x)").unwrap();
         assert_eq!(
             term,
-            Term::Abstraction(Abstraction {
-                arg: Variable::new('x'),
-                body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::new('y'),
-                    body: Box::new(Term::Variable(Variable::new('x'))),
-                })),
-            })
+            Term::Abstraction(Abstraction::new(
+                Variable::new('x'),
+                Term::Abstraction(Abstraction::new(
+                    Variable::new('y'),
+                    Term::Variable(Variable::new('x')),
+                )),
+            ))
         );
     }
 
@@ -286,16 +280,16 @@ mod test {
         let term = parse_term("λy.(a b) c").unwrap();
         assert_eq!(
             term,
-            Term::Abstraction(Abstraction {
-                arg: Variable::new('y'),
-                body: Box::new(Term::Application(Application(
+            Term::Abstraction(Abstraction::new(
+                Variable::new('y'),
+                Term::Application(Application(
                     Box::new(Term::Application(Application(
                         Box::new(Term::Variable(Variable::new('a'))),
                         Box::new(Term::Variable(Variable::new('b'))),
                     ))),
                     Box::new(Term::Variable(Variable::new('c'))),
-                ))),
-            })
+                )),
+            ))
         );
     }
 
@@ -319,20 +313,20 @@ mod test {
         let term = parse_term("λx.λy.(a b) (λz.λw.(c d e) f)").unwrap();
         assert_eq!(
             term,
-            Term::Abstraction(Abstraction {
-                arg: Variable::new('x'),
-                body: Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::new('y'),
-                    body: Box::new(Term::Application(Application(
+            Term::Abstraction(Abstraction::new(
+                Variable::new('x'),
+                Term::Abstraction(Abstraction::new(
+                    Variable::new('y'),
+                    Term::Application(Application(
                         Box::new(Term::Application(Application(
                             Box::new(Term::Variable(Variable::new('a'))),
                             Box::new(Term::Variable(Variable::new('b'))),
                         ))),
-                        Box::new(Term::Abstraction(Abstraction {
-                            arg: Variable::new('z'),
-                            body: Box::new(Term::Abstraction(Abstraction {
-                                arg: Variable::new('w'),
-                                body: Box::new(Term::Application(Application(
+                        Box::new(Term::Abstraction(Abstraction::new(
+                            Variable::new('z'),
+                            Term::Abstraction(Abstraction::new(
+                                Variable::new('w'),
+                                Term::Application(Application(
                                     Box::new(Term::Application(Application(
                                         Box::new(Term::Application(Application(
                                             Box::new(Term::Variable(Variable::new('c'))),
@@ -341,31 +335,31 @@ mod test {
                                         Box::new(Term::Variable(Variable::new('e'))),
                                     ))),
                                     Box::new(Term::Variable(Variable::new('f'))),
-                                ))),
-                            })),
-                        })),
-                    ))),
-                })),
-            })
+                                )),
+                            )),
+                        ))),
+                    )),
+                ))
+            ),)
         );
     }
 
     #[test]
     fn test_round_trip() {
-        let term = Term::Abstraction(Abstraction {
-            arg: Variable::new('x'),
-            body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::new('y'),
-                body: Box::new(Term::Application(Application(
+        let term = Term::Abstraction(Abstraction::new(
+            Variable::new('x'),
+            Term::Abstraction(Abstraction::new(
+                Variable::new('y'),
+                Term::Application(Application(
                     Box::new(Term::Application(Application(
                         Box::new(Term::Variable(Variable::new('a'))),
                         Box::new(Term::Variable(Variable::new('b'))),
                     ))),
-                    Box::new(Term::Abstraction(Abstraction {
-                        arg: Variable::new('z'),
-                        body: Box::new(Term::Abstraction(Abstraction {
-                            arg: Variable::new('w'),
-                            body: Box::new(Term::Application(Application(
+                    Box::new(Term::Abstraction(Abstraction::new(
+                        Variable::new('z'),
+                        Term::Abstraction(Abstraction::new(
+                            Variable::new('w'),
+                            Term::Application(Application(
                                 Box::new(Term::Application(Application(
                                     Box::new(Term::Application(Application(
                                         Box::new(Term::Variable(Variable::new('c'))),
@@ -374,12 +368,12 @@ mod test {
                                     Box::new(Term::Variable(Variable::new('e'))),
                                 ))),
                                 Box::new(Term::Variable(Variable::new('f'))),
-                            ))),
-                        })),
-                    })),
-                ))),
-            })),
-        });
+                            )),
+                        )),
+                    ))),
+                )),
+            )),
+        ));
         let serialised_term = format!("{term}");
         let parsed_term = parse_term(&serialised_term).unwrap();
         assert_eq!(term, parsed_term);
@@ -447,10 +441,10 @@ mod test {
         assert_eq!(
             term,
             Term::Application(Application(
-                Box::new(Term::Abstraction(Abstraction {
-                    arg: Variable::new('x'),
-                    body: Box::new(Term::Variable(Variable::new('x'))),
-                })),
+                Box::new(Term::Abstraction(Abstraction::new(
+                    Variable::new('x'),
+                    Term::Variable(Variable::new('x')),
+                ))),
                 Box::new(Term::Variable(Variable::new('y')))
             ))
         )
