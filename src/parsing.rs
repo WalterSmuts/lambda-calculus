@@ -381,25 +381,29 @@ mod test {
 
     #[test]
     fn parse_nat_0() {
-        let term = parse_term("0").unwrap();
+        let mut term = parse_term("0").unwrap();
+        term.erase_types();
         assert_eq!(term, parse_term("λs.λz.z").unwrap());
     }
 
     #[test]
     fn parse_nat_1() {
-        let term = parse_term("1").unwrap();
+        let mut term = parse_term("1").unwrap();
+        term.erase_types();
         assert_eq!(term, parse_term("λs.λz.s z").unwrap());
     }
 
     #[test]
     fn parse_nat_2() {
-        let term = parse_term("2").unwrap();
+        let mut term = parse_term("2").unwrap();
+        term.erase_types();
         assert_eq!(term, parse_term("λs.λz.s (s z)").unwrap());
     }
 
     #[test]
     fn parse_complex_nat() {
-        let term = parse_term("λa.1 2").unwrap();
+        let mut term = parse_term("λa.1 2").unwrap();
+        term.erase_types();
         assert_eq!(term, parse_term("λa.(λs.λz.s z) (λs.λz.s (s z))").unwrap());
     }
 

@@ -53,6 +53,7 @@ impl Term {
         match self {
             Term::Variable(variable) => variable.erase_types(),
             Term::Abstraction(abstraction) => {
+                abstraction.lambda_type = None;
                 abstraction.body.erase_types();
                 abstraction.arg.erase_types();
             }
@@ -184,6 +185,7 @@ pub enum LambdaType {
 pub struct Abstraction {
     arg: Variable,
     body: Box<Term>,
+    lambda_type: Option<LambdaType>,
 }
 
 impl Abstraction {
@@ -191,6 +193,15 @@ impl Abstraction {
         Self {
             arg,
             body: Box::new(body),
+            lambda_type: None,
+        }
+    }
+
+    fn new_with_type(arg: Variable, body: Term, lambda_type: LambdaType) -> Self {
+        Self {
+            arg,
+            body: Box::new(body),
+            lambda_type: Some(lambda_type),
         }
     }
 
@@ -241,9 +252,10 @@ impl From<u32> for Term {
                 Box::new(body),
             ))
         }
-        Term::Abstraction(Abstraction::new(
+        Term::Abstraction(Abstraction::new_with_type(
             Variable::new('s'),
             Term::Abstraction(Abstraction::new(Variable::new('z'), body)),
+            LambdaType::Nat,
         ))
     }
 }
