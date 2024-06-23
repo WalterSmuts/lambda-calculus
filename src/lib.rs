@@ -184,7 +184,15 @@ pub struct Abstraction {
     arg: Variable,
     body: Box<Term>,
 }
+
 impl Abstraction {
+    fn new(arg: Variable, body: Term) -> Self {
+        Self {
+            arg,
+            body: Box::new(body),
+        }
+    }
+
     fn substitute(&self, second_term: &Term) -> Term {
         let mut new_body = self.body.clone();
         new_body.substitute_variables_with_arg(&self.arg, second_term);
@@ -225,20 +233,17 @@ impl Display for Application {
 
 impl From<u32> for Term {
     fn from(value: u32) -> Self {
-        let mut body: Box<Term> = Box::new(Term::Variable(Variable::new('z')));
+        let mut body: Term = Term::Variable(Variable::new('z'));
         for _ in 0..value {
-            body = Box::new(Term::Application(Application(
+            body = Term::Application(Application(
                 Box::new(Term::Variable(Variable::new('s'))),
-                body,
-            )))
+                Box::new(body),
+            ))
         }
-        Term::Abstraction(Abstraction {
-            arg: Variable::new('s'),
-            body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::new('z'),
-                body,
-            })),
-        })
+        Term::Abstraction(Abstraction::new(
+            Variable::new('s'),
+            Term::Abstraction(Abstraction::new(Variable::new('z'), body)),
+        ))
     }
 }
 
@@ -315,22 +320,22 @@ mod test {
 
     #[test]
     fn identity() {
-        let identity = Term::Abstraction(Abstraction {
-            arg: Variable::new('x'),
-            body: Box::new(Term::Variable(Variable::new('x'))),
-        });
+        let identity = Term::Abstraction(Abstraction::new(
+            Variable::new('x'),
+            Term::Variable(Variable::new('x')),
+        ));
         assert_eq!("λx.x", format!("{identity}"))
     }
 
     #[test]
     fn test_true() {
-        let lambda_true = Term::Abstraction(Abstraction {
-            arg: Variable::new('x'),
-            body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::new('y'),
-                body: Box::new(Term::Variable(Variable::new('x'))),
-            })),
-        });
+        let lambda_true = Term::Abstraction(Abstraction::new(
+            Variable::new('x'),
+            Term::Abstraction(Abstraction::new(
+                Variable::new('y'),
+                Term::Variable(Variable::new('x')),
+            )),
+        ));
         assert_eq!("λx.λy.x", format!("{lambda_true}"));
         let typed_true: bool = lambda_true.try_into().unwrap();
         assert!(typed_true);
@@ -338,13 +343,13 @@ mod test {
 
     #[test]
     fn test_false() {
-        let lambda_false = Term::Abstraction(Abstraction {
-            arg: Variable::new('x'),
-            body: Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::new('y'),
-                body: Box::new(Term::Variable(Variable::new('y'))),
-            })),
-        });
+        let lambda_false = Term::Abstraction(Abstraction::new(
+            Variable::new('x'),
+            Term::Abstraction(Abstraction::new(
+                Variable::new('y'),
+                Term::Variable(Variable::new('y')),
+            )),
+        ));
         assert_eq!("λx.λy.y", format!("{lambda_false}"));
         let typed_false: bool = lambda_false.try_into().unwrap();
         assert!(!typed_false);
@@ -378,19 +383,19 @@ mod test {
     #[test]
     fn abstraction_association() {
         let term_1 = Term::Application(Application(
-            Box::new(Term::Abstraction(Abstraction {
-                arg: Variable::new('x'),
-                body: Box::new(Term::Variable(Variable::new('y'))),
-            })),
+            Box::new(Term::Abstraction(Abstraction::new(
+                Variable::new('x'),
+                Term::Variable(Variable::new('y')),
+            ))),
             Box::new(Term::Variable(Variable::new('z'))),
         ));
-        let term_2 = Term::Abstraction(Abstraction {
-            arg: Variable::new('x'),
-            body: Box::new(Term::Application(Application(
+        let term_2 = Term::Abstraction(Abstraction::new(
+            Variable::new('x'),
+            Term::Application(Application(
                 Box::new(Term::Variable(Variable::new('y'))),
                 Box::new(Term::Variable(Variable::new('z'))),
-            ))),
-        });
+            )),
+        ));
 
         assert_ne!(format!("{term_1}"), format!("{term_2}"));
     }
